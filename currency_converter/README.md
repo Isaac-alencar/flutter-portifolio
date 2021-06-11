@@ -10,7 +10,7 @@ This project is a cross-platform app to convert values between three currencies 
 - CircularProgressIndicator
 - TextField
 <br />
-## Final layout
+## Final layout  
 ![Demo of application](https://i.imgur.com/C9ruDn2.png)
 
 ## Development Enviroment 
