@@ -16,7 +16,7 @@ void main() async {
 Future<Map<String, dynamic>> getData() async {
   try {
     http.Response response = await http
-        .get(Uri.parse('https://api.hgbrasil.com/finance?key=5cc3883e'));
+        .get(Uri.parse('https://api.hgbrasil.com/finance?key=API_HG_FINNANCE_KEY'));
 
     return json.decode(response.body);
   } catch (error) {
