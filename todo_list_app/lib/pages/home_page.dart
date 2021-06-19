@@ -1,4 +1,5 @@
 import "dart:convert";
+import "dart:async";
 
 import "package:flutter/material.dart";
 
@@ -51,6 +52,22 @@ class _HomeState extends State<Home> {
     fsm.saveData(_todoList);
   }
 
+  Future<Null> _reafreshAndSortList() async {
+    await Future.delayed(Duration(microseconds: 100));
+    setState(() {
+      _todoList.sort((a, b) {
+        if (a["completed"] && !b["completed"])
+          return 1;
+        else if (a["completed"] && b["completed"])
+          return -1;
+        else
+          return 0;
+      });
+    });
+
+    return null;
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -95,10 +112,13 @@ class _HomeState extends State<Home> {
             ),
           ),
           Expanded(
-            child: ListView.builder(
-              padding: EdgeInsets.only(top: 8),
-              itemCount: _todoList.length,
-              itemBuilder: buildItems,
+            child: RefreshIndicator(
+              onRefresh: _reafreshAndSortList,
+              child: ListView.builder(
+                padding: EdgeInsets.only(top: 8),
+                itemCount: _todoList.length,
+                itemBuilder: buildItems,
+              ),
             ),
           )
         ],
