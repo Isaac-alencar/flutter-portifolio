@@ -1,9 +1,11 @@
-import 'dart:io';
-import "dart:async";
 import "dart:convert";
 
 import "package:flutter/material.dart";
-import 'package:path_provider/path_provider.dart';
+
+import "package:todo_list_app/util/filesystem_management.dart";
+import "package:todo_list_app/widgets/snack_bar.dart";
+
+final FileSystemManagement fsm = FileSystemManagement();
 
 class Home extends StatefulWidget {
   const Home({Key? key}) : super(key: key);
@@ -13,10 +15,23 @@ class Home extends StatefulWidget {
 }
 
 class _HomeState extends State<Home> {
-  List<Map<String, dynamic>> _todoList = [];
+  @override
+  void initState() {
+    super.initState();
+
+    fsm.readData().then((data) => {
+          setState(() {
+            _todoList = json.decode(data);
+          })
+        });
+  }
+
+  List<dynamic> _todoList = [];
+
+  Map<String, dynamic>? _lastRemovedItem;
+  int? _lastRemovedItemPos;
 
   final TextEditingController _inputController = TextEditingController();
-
   void _addTaskOnList() {
     setState(() {
       Map<String, dynamic> newTask = Map();
@@ -24,28 +39,16 @@ class _HomeState extends State<Home> {
       _inputController.text = "";
       newTask["completed"] = false;
       _todoList.add(newTask);
+      fsm.saveData(_todoList);
     });
   }
 
-  Future<File> _getFile() async {
-    final Directory directory = await getApplicationDocumentsDirectory();
-    return File("${directory.path}/data.json");
-  }
+  void _removeItemFromList(index) {
+    _lastRemovedItem = Map.from(_todoList[index]);
+    _lastRemovedItemPos = index;
+    _todoList.removeAt(index);
 
-  Future _saveData() async {
-    String data = json.encode(_todoList);
-    final File file = await _getFile();
-    return file.writeAsString(data);
-  }
-
-  Future _readData() async {
-    try {
-      final File file = await _getFile();
-      return file.readAsString();
-    } catch (error) {
-      print(error);
-      return;
-    }
+    fsm.saveData(_todoList);
   }
 
   @override
@@ -95,28 +98,55 @@ class _HomeState extends State<Home> {
             child: ListView.builder(
               padding: EdgeInsets.only(top: 8),
               itemCount: _todoList.length,
-              itemBuilder: (BuildContext context, int index) {
-                return CheckboxListTile(
-                  title: Text(_todoList[index]["title"]),
-                  value: _todoList[index]["completed"],
-                  onChanged: (bool) {
-                    setState(() {
-                      _todoList[index]["completed"] = bool;
-                    });
-                  },
-                  secondary: CircleAvatar(
-                    child: Icon(
-                      _todoList[index]["completed"] == true
-                          ? Icons.check
-                          : Icons.error,
-                    ),
-                  ),
-                );
-              },
+              itemBuilder: buildItems,
             ),
           )
         ],
       ),
+    );
+  }
+
+  Widget buildItems(_, int index) {
+    return Dismissible(
+      background: Container(
+        color: Colors.redAccent[400],
+        child: Align(
+          alignment: Alignment(-0.9, 0.0),
+          child: Icon(
+            Icons.delete,
+            color: Colors.white,
+          ),
+        ),
+      ),
+      child: CheckboxListTile(
+        title: Text(_todoList[index]["title"]),
+        value: _todoList[index]["completed"],
+        onChanged: (bool) {
+          setState(() {
+            _todoList[index]["completed"] = bool;
+            fsm.saveData(_todoList);
+          });
+        },
+        secondary: CircleAvatar(
+          child: Icon(
+            _todoList[index]["completed"] == true ? Icons.check : Icons.error,
+          ),
+        ),
+      ),
+      key: Key(DateTime.now().millisecondsSinceEpoch.toString()),
+      direction: DismissDirection.startToEnd,
+      onDismissed: (DismissDirection direction) {
+        setState(() {
+          _removeItemFromList(index);
+
+          ScaffoldMessenger.of(context).showSnackBar(createSnackBar("Undo", () {
+            setState(() {
+              _todoList.insert(_lastRemovedItemPos!, _lastRemovedItem);
+              fsm.saveData(_todoList);
+            });
+          }, 2));
+        });
+      },
     );
   }
 }
